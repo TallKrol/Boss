@@ -581,8 +581,11 @@ MonoBehaviour:
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 0
-  normalSprite: {fileID: 0}
-  panicSprite: {fileID: 0}
+  berserkerSprite: {fileID: 0}
+  sniperSprite: {fileID: 0}
+  pyromancerSprite: {fileID: 0}
+  clericSprite: {fileID: 0}
+  guardianSprite: {fileID: 0}
   potionEffectPrefab: {fileID: 0}
   potionSound: {fileID: 0}
   deathSound: {fileID: 0}

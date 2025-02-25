@@ -32,9 +32,13 @@ public class EnemyController : MonoBehaviour
     private float missChance = 0.15f;
 
     private SpriteRenderer spriteRenderer;
-    public Sprite normalSprite;
-    public Sprite panicSprite;
     private Animator animator;
+
+    public Sprite berserkerSprite;
+    public Sprite sniperSprite;
+    public Sprite pyromancerSprite;
+    public Sprite clericSprite;
+    public Sprite guardianSprite;
 
     private int healingPotions = 0;
     private bool hasUsedPotion = false;
@@ -50,6 +54,8 @@ public class EnemyController : MonoBehaviour
 
     public ParticleSystem deathParticles;
 
+    private EnemyChat enemyChat; // Ссылка на чат врагов
+
     public event Action<EnemyController> OnDeath;
 
     void Start()
@@ -59,10 +65,10 @@ public class EnemyController : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
         audioSource = GetComponent<AudioSource>();
+        enemyChat = FindObjectOfType<EnemyChat>(); // Находим чат в сцене
         if (spriteRenderer == null) Debug.LogError("SpriteRenderer не найден на " + enemyClass);
         if (animator == null) animator = gameObject.AddComponent<Animator>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
-        spriteRenderer.sprite = normalSprite;
         animator.SetTrigger("Idle");
 
         if (deathParticles != null) deathParticles.Stop();
@@ -84,6 +90,7 @@ public class EnemyController : MonoBehaviour
             if (deathAnimationTime <= 0)
             {
                 if (deathParticles != null) deathParticles.Play();
+                if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Я побеждён!");
                 Destroy(gameObject);
             }
             return;
@@ -107,10 +114,6 @@ public class EnemyController : MonoBehaviour
 
         CheckForIdle();
 
-        BossController boss = FindObjectOfType<BossController>();
-        bool isBossInSecondPhase = boss != null && boss.IsInSecondPhase();
-        spriteRenderer.sprite = isBossInSecondPhase ? panicSprite : normalSprite;
-
         if (Time.time >= nextAttackTime)
         {
             recentlyAttacked = true;
@@ -118,19 +121,35 @@ public class EnemyController : MonoBehaviour
             {
                 animator.SetTrigger("Attack");
                 if (attackSound != null) audioSource.PlayOneShot(attackSound);
-                switch (enemyClass)
 
-{
-                    case "Berserker": BerserkerRage(isBossInSecondPhase); break;
-                    case "Sniper": SniperShot(isBossInSecondPhase); break;
-                    case "Pyromancer": PyroBlast(isBossInSecondPhase); break;
-                    case "Cleric": ClericHeal(isBossInSecondPhase); break;
-                    case "Guardian": GuardianTaunt(isBossInSecondPhase); break;
+switch (enemyClass)
+                {
+                    case "Berserker":
+                        BerserkerRage(false);
+                        if (enemyChat != null) enemyChat.AddMessage("Berserker: В бой, братья!");
+                        break;
+                    case "Sniper":
+                        SniperShot(false);
+                        if (enemyChat != null) enemyChat.AddMessage("Sniper: Прямо в яблочко!");
+                        break;
+                    case "Pyromancer":
+                        PyroBlast(false);
+                        if (enemyChat != null) enemyChat.AddMessage("Pyromancer: Гори, босс!");
+                        break;
+                    case "Cleric":
+                        ClericHeal(false);
+                        if (enemyChat != null) enemyChat.AddMessage("Cleric: Держитесь, я исцелю!");
+                        break;
+                    case "Guardian":
+                        GuardianTaunt(false);
+                        if (enemyChat != null) enemyChat.AddMessage("Guardian: Я прикрою вас!");
+                        break;
                 }
             }
             else
             {
                 Debug.Log($"{enemyClass} промахнулся!");
+                if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Проклятье, промах!");
             }
             GameManager gm = FindObjectOfType<GameManager>();
             int wave = gm != null ? gm.GetCurrentWave() : 1;
@@ -187,7 +206,8 @@ public class EnemyController : MonoBehaviour
                 if (nearestAlly != null && Vector2.Distance(transform.position, nearestAlly.transform.position) > 2f)
                     direction = (nearestAlly.transform.position - transform.position).normalized;
                 rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
-            }
+
+}
             else if (enemyClass == "Guardian")
             {
                 rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
@@ -206,8 +226,7 @@ public class EnemyController : MonoBehaviour
                 EnemyController nearestRanged = FindNearestRanged();
                 if (nearestRanged != null && Vector2.Distance(transform.position, nearestRanged.transform.position) > 3f)
                     direction = (nearestRanged.transform.position - transform.position).normalized;
-
-}
+            }
             else if (wave >= 6 && enemyClass == "Berserker")
             {
                 EnemyController guardian = FindGuardian();
@@ -274,7 +293,8 @@ public class EnemyController : MonoBehaviour
         if (isBossInSecondPhase && isRangedClass)
         {
             if (isGrounded && UnityEngine.Random.value < 0.3f)
-            {
+
+{
                 Collider2D[] nearbyPlatforms = Physics2D.OverlapCircleAll(transform.position, 5f, groundLayer);
                 foreach (Collider2D platform in nearbyPlatforms)
                 {
@@ -282,6 +302,7 @@ public class EnemyController : MonoBehaviour
                     {
                         Vector2 directionToPlatform = (platform.transform.position - transform.position).normalized;
                         rb.velocity = new Vector2(directionToPlatform.x * speed, jumpForce);
+                        if (enemyChat != null && isRangedClass) enemyChat.AddMessage($"{enemyClass}: На высоту, быстро!");
                         break;
                     }
                 }
@@ -292,8 +313,7 @@ public class EnemyController : MonoBehaviour
             RaycastHit2D platformCheck = Physics2D.Raycast(transform.position, Vector2.up, 5f, groundLayer);
             if (platformCheck.collider != null && isGrounded)
             {
-
-float distanceToPlatform = platformCheck.point.y - transform.position.y;
+                float distanceToPlatform = platformCheck.point.y - transform.position.y;
                 if (distanceToPlatform > 0.5f && distanceToPlatform < jumpForce)
                     rb.velocity = new Vector2(rb.velocity.x, jumpForce);
             }
@@ -307,6 +327,7 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
                 {
                     Vector2 directionToPlatform = (platform.transform.position - transform.position).normalized;
                     rb.velocity = new Vector2(directionToPlatform.x * speed, jumpForce);
+                    if (enemyChat != null && isRangedClass) enemyChat.AddMessage($"{enemyClass}: Займу позицию выше!");
                     break;
                 }
             }
@@ -325,6 +346,7 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
                 Vector2 dodgeDirection = Vector2.Perpendicular((threat.transform.position - transform.position).normalized);
                 rb.velocity = new Vector2(dodgeDirection.x * speed * 2, jumpForce / 2);
                 nextDodgeTime = Time.time + dodgeCooldown;
+                if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Уклоняюсь!");
                 Debug.Log($"{enemyClass} уворачивается от атаки босса!");
                 break;
             }
@@ -338,6 +360,7 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
             Vector2 dodgeDirection = Vector2.Perpendicular((target.position - transform.position).normalized);
             rb.velocity = new Vector2(dodgeDirection.x * speed * 2, jumpForce / 2);
             nextDodgeTime = Time.time + dodgeCooldown * 0.5f;
+            if (enemyChat != null) enemyChat.AddMessage("Berserker: Не поймаешь!");
             Debug.Log($"{enemyClass} уворачивается, чтобы окружить босса!");
         }
     }
@@ -348,7 +371,8 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
         if (gm != null && gm.GetCurrentWave() >= 4 && healingPotions > 0 && !hasUsedPotion && health < 0.3f * GetMaxHealth())
         {
             health += 15f;
-            if (health > GetMaxHealth()) health = GetMaxHealth();
+
+if (health > GetMaxHealth()) health = GetMaxHealth();
             healingPotions--;
             hasUsedPotion = true;
             if (potionEffectPrefab != null)
@@ -360,6 +384,7 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
             {
                 audioSource.PlayOneShot(potionSound);
             }
+            if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Зелье спасает меня!");
             Debug.Log($"{enemyClass} выпил зелье лечения и восстановил 15 HP!");
         }
     }
@@ -377,6 +402,7 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
                 {
                     Vector2 retreatDirection = (transform.position - bomb.transform.position).normalized;
                     rb.velocity = new Vector2(retreatDirection.x * speed * 1.5f, rb.velocity.y);
+                    if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Бомба! Отступаю!");
                     Debug.Log($"{enemyClass} отступает от бомбы!");
                     break;
                 }
@@ -384,12 +410,13 @@ float distanceToPlatform = platformCheck.point.y - transform.position.y;
         }
     }
 
-void CheckForIdle()
+    void CheckForIdle()
     {
         if (UnityEngine.Random.value < 0.02f && !isIdling && isGrounded)
         {
             isIdling = true;
             idleTime = UnityEngine.Random.Range(0.5f, 2.5f);
+            if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Где этот босс?");
             Debug.Log($"{enemyClass} осматривается");
         }
 
@@ -408,6 +435,7 @@ void CheckForIdle()
             isIdling = true;
             idleTime = UnityEngine.Random.Range(0.3f, 1f);
             rb.velocity = new Vector2(rb.velocity.x * 0.5f, rb.velocity.y);
+            if (enemyChat != null) enemyChat.AddMessage($"{enemyClass}: Ой, споткнулся!");
             Debug.Log($"{enemyClass} споткнулся!");
         }
     }
@@ -446,7 +474,8 @@ void CheckForIdle()
             if (enemyClass == "Berserker")
                 TryDodge();
             else if (enemyClass == "Sniper")
-                TryJumpToPlatform();
+
+TryJumpToPlatform();
             else if (enemyClass == "Pyromancer")
                 PyroBlast(true);
             else if (enemyClass == "Cleric")
@@ -468,11 +497,35 @@ void CheckForIdle()
         enemyClass = newClass;
         switch (enemyClass)
         {
-            case "Berserker": speed = 4.4f; health = 63f; break;
-            case "Sniper": speed = 2.2f; health = 36f; attackCooldown = 1.5f; break;
-            case "Pyromancer": speed = 2.75f; health = 31.5f; attackCooldown = 1.8f; break;
-            case "Cleric": speed = 3.3f; health = 45f; attackCooldown = 2f; break;
-            case "Guardian": speed = 1.65f; health = 90f; attackCooldown = 2f; break;
+            case "Berserker":
+                speed = 4.4f;
+                health = 63f;
+                spriteRenderer.sprite = berserkerSprite;
+                break;
+            case "Sniper":
+                speed = 2.2f;
+                health = 36f;
+                attackCooldown = 1.5f;
+                spriteRenderer.sprite = sniperSprite;
+                break;
+            case "Pyromancer":
+                speed = 2.75f;
+                health = 31.5f;
+                attackCooldown = 1.8f;
+                spriteRenderer.sprite = pyromancerSprite;
+                break;
+            case "Cleric":
+                speed = 3.3f;
+                health = 45f;
+                attackCooldown = 2f;
+                spriteRenderer.sprite = clericSprite;
+                break;
+            case "Guardian":
+                speed = 1.65f;
+                health = 90f;
+                attackCooldown = 2f;
+                spriteRenderer.sprite = guardianSprite;
+                break;
         }
     }
 
@@ -491,8 +544,7 @@ void CheckForIdle()
     void ResetSpeed()
     {
         speed -= (Physics2D.OverlapCircle(transform.position, 5f, LayerMask.GetMask("Enemy"))?.GetComponent<EnemyController>()?.enemyClass == "Cleric") ? 2f : 1f;
-
-foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
+        foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         {
             if (Vector2.Distance(transform.position, ally.transform.position) < 5f && !ally.isRangedClass)
                 ally.speed -= 0.5f;
@@ -523,7 +575,7 @@ foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         Debug.Log($"{enemyClass} стреляет очередью!");
     }
 
-    void PyroBlast(bool isBossInSecondPhase)
+void PyroBlast(bool isBossInSecondPhase)
     {
         GameManager gm = FindObjectOfType<GameManager>();
         int wave = gm != null ? gm.GetCurrentWave() : 1;
@@ -574,8 +626,7 @@ foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         if (mostInjured != null)
         {
             if (wave >= 7)
-
-{
+            {
                 EnemyController secondMostInjured = FindSecondMostInjuredAlly(mostInjured);
                 if (secondMostInjured != null)
                 {
@@ -605,7 +656,7 @@ foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         if (wave >= 5) attackCooldown = 1.6f;
     }
 
-    void GuardianTaunt(bool isBossInSecondPhase)
+void GuardianTaunt(bool isBossInSecondPhase)
     {
         health += 5f;
         BossController boss = FindObjectOfType<BossController>();
@@ -671,7 +722,7 @@ foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         return weakest;
     }
 
-EnemyController FindGuardian()
+    EnemyController FindGuardian()
     {
         foreach (EnemyController ally in FindObjectsOfType<EnemyController>())
         {
@@ -721,7 +772,7 @@ EnemyController FindGuardian()
         return nearest;
     }
 
-    float GetMaxHealth()
+float GetMaxHealth()
     {
         switch (enemyClass)
         {
@@ -742,7 +793,6 @@ EnemyController FindGuardian()
 
     void RemoveShield()
     {
-        // Щит исчезает автоматически
     }
 
     void ResetAttackFlag() { recentlyAttacked = false; }
