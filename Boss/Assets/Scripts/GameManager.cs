@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using System.Linq;
 
 public class GameManager : MonoBehaviour
 {
@@ -13,7 +14,6 @@ public class GameManager : MonoBehaviour
     private int enemiesKilled = 0;
     private int upgradePoints = 0;
 
-    // UI элементы
     public GameObject upgradePanel;
     public GameObject victoryPanel;
     public GameObject defeatPanel;
@@ -22,10 +22,17 @@ public class GameManager : MonoBehaviour
     public Slider bossHealthSlider;
     public Text upgradePointsText;
 
-    // Кэширование врагов
-    private List<EnemyController> activeEnemies = new List<EnemyController>();
+    public GameObject statsPanel;
+    public Text statsText;
 
-    // Музыка
+    private List<EnemyController> activeEnemies = new List<EnemyController>();
+    private float totalDamageToEnemies = 0f;
+    private int upgradesPurchased = 0;
+    private Dictionary<string, float> damageByClass = new Dictionary<string, float>();
+    private float totalClericHealing = 0f;
+    private string bossKiller = "";
+    private float lastBossHitTime = -1f;
+
     public AudioClip backgroundMusic;
     public AudioClip bossPhaseMusic;
     private AudioSource musicSource;
@@ -33,11 +40,31 @@ public class GameManager : MonoBehaviour
     private bool isUpgradePhase = false;
     private bool gameEnded = false;
 
+    private Dictionary<string, string> classNicknames = new Dictionary<string, string>();
+
     void Start()
     {
+        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone" };
+        string[] suffixes = { "X", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf" };
+        List<string> usedNicknames = new List<string>();
+
+        foreach (string className in new[] { "Berserker", "Sniper", "Pyromancer", "Cleric", "Guardian", "Bard" })
+        {
+            damageByClass[className] = 0f;
+            string nickname;
+            do
+            {
+                nickname = prefixes[UnityEngine.Random.Range(0, prefixes.Length)] +
+                           suffixes[UnityEngine.Random.Range(0, suffixes.Length)];
+            } while (usedNicknames.Contains(nickname));
+            usedNicknames.Add(nickname);
+            classNicknames[className] = nickname;
+        }
+
         StartNewWave();
         victoryPanel.SetActive(false);
         defeatPanel.SetActive(false);
+        statsPanel.SetActive(false);
         UpdateUI();
 
         musicSource = gameObject.AddComponent<AudioSource>();
@@ -96,6 +123,7 @@ public class GameManager : MonoBehaviour
         EnemySpawner enemySpawner = spawner.GetComponent<EnemySpawner>();
         if (enemySpawner != null)
         {
+            enemySpawner.SetNicknames(classNicknames);
             enemySpawner.OnEnemySpawned += AddEnemy;
         }
         currentWave++;
@@ -116,7 +144,7 @@ public class GameManager : MonoBehaviour
         globalFatigue += 20f;
         waveActive = false;
         upgradePoints += enemiesKilled * 2;
-        if (enemiesKilled >= 5)
+        if (enemiesKilled >= 6)
         {
             upgradePoints += 5;
             Debug.Log("Бонус +5 очков за убийство всей пати!");
@@ -142,20 +170,14 @@ public class GameManager : MonoBehaviour
         activeEnemies.Remove(enemy);
     }
 
-    public void BossDied()
+    public void BossDied(string killer, float hitTime)
     {
-        EndGame(false);
-    }
-
-public void BossPhaseChanged()
-    {
-        globalFatigue = Mathf.Max(0, globalFatigue - 10f);
-        Debug.Log("Первая фаза босса убита! Усталость снижена на 10%. Текущая усталость: " + globalFatigue);
-        if (bossPhaseMusic != null && musicSource != null)
+        if (hitTime > lastBossHitTime)
         {
-            musicSource.clip = bossPhaseMusic;
-            musicSource.Play();
+            bossKiller = killer; // Теперь "Ник [Класс]"
+            lastBossHitTime = hitTime;
         }
+        EndGame(false);
     }
 
     void EndGame(bool bossWon)
@@ -169,18 +191,25 @@ public void BossPhaseChanged()
         {
             Debug.Log("Босс победил — усталость игроков достигла 100%!");
             victoryPanel.SetActive(true);
+            statsPanel.SetActive(true);
+            statsText.text = $"Победа Босса!\n" +
+                             $"Нанесённый урон врагам: {totalDamageToEnemies:F1}\n" +
+                             $"Куплено улучшений: {upgradesPurchased}\n" +
+                             $"Пережито волн: {currentWave}";
         }
         else
         {
             Debug.Log("Игроки победили — босс мёртв!");
             defeatPanel.SetActive(true);
+            statsPanel.SetActive(true);
+            var topDPS = damageByClass.OrderByDescending(x => x.Value).First();
+            statsText.text = $"Победа Игроков!\n" +
+                             $"Больше всего урона: {topDPS.Key} ({topDPS.Value:F1})\n" +
+                             $"Лечение Клерка: {totalClericHealing:F1}\n" +
+                             $"Убийца босса: {bossKiller}\n" +
+                             $"Общее количество атак: {activeEnemies.Sum(e => e.attackCooldown > 0 ? 1 : 0)}";
         }
         if (musicSource != null) musicSource.Stop();
-    }
-
-    public int GetCurrentWave()
-    {
-        return currentWave;
     }
 
     public void RestartGame()
@@ -200,6 +229,7 @@ public void BossPhaseChanged()
         {
             FindObjectOfType<BossController>().UpgradeWeapon("Sword", 5f);
             upgradePoints -= 5;
+            upgradesPurchased++;
             StartNewWave();
         }
     }
@@ -210,6 +240,7 @@ public void BossPhaseChanged()
         {
             FindObjectOfType<BossController>().UpgradeWeapon("Arrow", 5f);
             upgradePoints -= 5;
+            upgradesPurchased++;
             StartNewWave();
         }
     }
@@ -220,6 +251,7 @@ public void BossPhaseChanged()
         {
             FindObjectOfType<BossController>().IncreaseHealth(20f);
             upgradePoints -= 10;
+            upgradesPurchased++;
             StartNewWave();
         }
     }
@@ -230,6 +262,7 @@ public void BossPhaseChanged()
         {
             FindObjectOfType<BossController>().ActivateShield(50f);
             upgradePoints -= 15;
+            upgradesPurchased++;
             StartNewWave();
         }
     }
@@ -240,7 +273,34 @@ public void BossPhaseChanged()
         {
             FindObjectOfType<BossController>().PurchaseSecondPhase();
             upgradePoints -= 20;
+            upgradesPurchased++;
             StartNewWave();
         }
+    }
+
+    public int GetCurrentWave()
+    {
+        return currentWave;
+    }
+
+    public void AddDamageToEnemies(float damage)
+    {
+        totalDamageToEnemies += damage;
+    }
+
+    public void AddDamageByClass(string className, float damage)
+    {
+        if (damageByClass.ContainsKey(className))
+            damageByClass[className] += damage;
+    }
+
+    public void AddClericHealing(float healing)
+    {
+        totalClericHealing += healing;
+    }
+
+    public void BossDied() // Устаревший метод
+    {
+        BossDied("Неизвестно", Time.time);
     }
 }

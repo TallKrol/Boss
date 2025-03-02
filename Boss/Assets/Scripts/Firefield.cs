@@ -2,26 +2,33 @@ using UnityEngine;
 
 public class FireField : MonoBehaviour
 {
-    public float damage = 5f;
-    public float radius = 1f;
-    private float lifetime = 5f;
-    private float nextDamageTime = 0f;
+    public float damagePerSecond = 2f; // Урон в секунду
+    private float lifetime = 3f;        // Время жизни огненного поля
 
     void Start()
     {
-        Destroy(gameObject, lifetime);
+        Destroy(gameObject, lifetime); // Уничтожение через 3 секунды
     }
 
-    void Update()
+    void OnTriggerStay2D(Collider2D other)
     {
-        if (Time.time >= nextDamageTime)
+        GameManager gm = FindObjectOfType<GameManager>();
+        if (other.CompareTag("Enemy"))
         {
-            Collider2D[] hit = Physics2D.OverlapCircleAll(transform.position, radius);
-            foreach (Collider2D obj in hit)
+            EnemyController enemy = other.GetComponent<EnemyController>();
+            if (enemy != null)
             {
-                if (obj.CompareTag("Boss")) obj.GetComponent<BossController>().TakeDamage(damage);
+                enemy.TakeDamage(damagePerSecond * Time.deltaTime);
             }
-            nextDamageTime = Time.time + 1f; // Урон раз в секунду
+        }
+        else if (other.CompareTag("Boss"))
+        {
+            BossController boss = other.GetComponent<BossController>();
+            if (boss != null)
+            {
+                boss.TakeDamage(damagePerSecond * Time.deltaTime);
+                if (gm != null) gm.AddDamageToEnemies(damagePerSecond * Time.deltaTime);
+            }
         }
     }
 }

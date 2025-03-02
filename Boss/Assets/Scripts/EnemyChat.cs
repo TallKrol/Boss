@@ -1,26 +1,25 @@
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 
 public class EnemyChat : MonoBehaviour
 {
-    public Text chatDisplayText; // Область вывода сообщений
-    public int maxMessages = 10; // Максимум сообщений на экране
+    public Text chatDisplayText;
+    private string chatLog = "";
 
-    private List<string> messages = new List<string>();
+    void Start()
+    {
+        if (chatDisplayText == null)
+        {
+            Debug.LogError("ChatDisplayText не привязан в инспекторе!");
+        }
+    }
 
-    // Метод для добавления сообщения в чат
     public void AddMessage(string message)
     {
-        messages.Add(message);
-
-        // Ограничиваем количество сообщений
-        if (messages.Count > maxMessages)
+        chatLog = message + "\n" + chatLog;
+        if (chatDisplayText != null)
         {
-            messages.RemoveAt(0);
+            chatDisplayText.text = chatLog;
         }
-
-        // Обновляем текст чата
-        chatDisplayText.text = string.Join("\n", messages);
     }
 }

@@ -2,43 +2,38 @@ using UnityEngine;
 
 public class BossController : MonoBehaviour
 {
-    public float moveSpeed = 5f;
+    private float speed = 5f;
+    private float jumpForce = 8f;
     public float health = 130f;
-    private float activeShield = 0f;
+    private float meleeDamage = 10f;
+    private float chokeDamage = 15f;
+    private float arrowDamage = 8f;
+    private float bombDamage = 12f;
+    private bool isGrounded = true;
+
     private Rigidbody2D rb;
+    private SpriteRenderer spriteRenderer;
+    private Animator animator;
 
     public GameObject arrowPrefab;
     public GameObject bombPrefab;
 
-    private float meleeDamage = 18f;
-    private float chokeDamage = 28f;
-    private float arrowDamage = 14f;
-    private float bombDamage = 20f;
-
-    private bool hasSecondPhase = false;
-    public bool isSecondPhaseActive = false;
-    private bool hasSecondLife = false;
-    private float invulnerabilityTime = 0f;
-
-    private float dashDistance = 3f;
-    private float dashCooldown = 3.5f;
-    private float nextDashTime = 0f;
-    private float dashFeedbackTime = 0f;
-
-    private SpriteRenderer spriteRenderer;
     public Sprite firstPhaseSprite;
     public Sprite secondPhaseSprite;
-    private Animator animator;
 
-    public AudioClip dashSound;
+    private bool isSecondPhaseActive = false;
+    private bool hasSecondPhase = false;
+    private float shieldAmount = 0f;
+
+    public LayerMask groundLayer;
+
     public AudioClip swordSound;
     public AudioClip chokeSound;
     public AudioClip arrowSound;
     public AudioClip bombSound;
-    public AudioClip phaseChangeSound;
+    public AudioClip dashSound;
     private AudioSource audioSource;
 
-    public ParticleSystem dashParticles;
     public ParticleSystem attackParticles;
     public ParticleSystem arrowParticles;
     public ParticleSystem bombParticles;
@@ -49,173 +44,202 @@ public class BossController : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
         audioSource = GetComponent<AudioSource>();
-        if (spriteRenderer == null) Debug.LogError("SpriteRenderer не найден на боссе!");
-        if (animator == null) animator = gameObject.AddComponent<Animator>();
-        if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+        if (rb == null || spriteRenderer == null || animator == null || audioSource == null)
+        {
+            Debug.LogError("Необходимые компоненты отсутствуют на Boss!");
+        }
         spriteRenderer.sprite = firstPhaseSprite;
-        animator.SetTrigger("Idle");
-
-        if (dashParticles != null) dashParticles.Stop();
-        if (attackParticles != null) attackParticles.Stop();
-        if (arrowParticles != null) arrowParticles.Stop();
-        if (bombParticles != null) bombParticles.Stop();
     }
 
     void Update()
     {
-        float moveX = Input.GetAxisRaw("Horizontal");
-        float moveY = Input.GetAxisRaw("Vertical");
-        Vector2 movement = new Vector2(moveX, moveY).normalized;
-
-        if (movement.magnitude > 0)
+        if (health <= 0 && !isSecondPhaseActive && hasSecondPhase)
         {
-            rb.velocity = movement * moveSpeed;
+            ActivateSecondPhase();
+            return;
+        }
+        if (health <= 0)
+        {
+            animator.SetTrigger("Death");
+            FindObjectOfType<GameManager>()?.BossDied();
+            Destroy(gameObject, 0.5f);
+            return;
+        }
+
+        isGrounded = Physics2D.Raycast(transform.position, Vector2.down, 0.6f, groundLayer);
+
+        float moveInput = Input.GetAxisRaw("Horizontal");
+        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
+
+        if (moveInput != 0)
+        {
             animator.SetBool("IsMoving", true);
+            spriteRenderer.flipX = moveInput < 0;
         }
         else
         {
-            rb.velocity = Vector2.zero;
             animator.SetBool("IsMoving", false);
         }
 
-        if (Input.GetKeyDown(KeyCode.Q)) SwordAttack();
-        if (Input.GetKeyDown(KeyCode.W)) ChokeAttack();
-        if (Input.GetKeyDown(KeyCode.E)) ArrowAttack();
-        if (Input.GetKeyDown(KeyCode.R)) BombAttack();
-        if (Input.GetKeyDown(KeyCode.Space) && Time.time >= nextDashTime) Dash(movement);
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+        }
 
-        if (invulnerabilityTime > 0)
+        if (Input.GetKeyDown(KeyCode.Q))
         {
-            invulnerabilityTime -= Time.deltaTime;
-            spriteRenderer.color = Color.Lerp(Color.white, Color.red, Mathf.PingPong(Time.time * 5, 1));
+            SwordAttack();
         }
-        else if (dashFeedbackTime > 0)
+        if (Input.GetKeyDown(KeyCode.W))
         {
-            dashFeedbackTime -= Time.deltaTime;
-            spriteRenderer.color = Color.Lerp(Color.white, Color.blue, Mathf.PingPong(Time.time * 10, 1));
+            ChokeAttack();
         }
-        else
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            spriteRenderer.color = Color.white;
-            spriteRenderer.sprite = isSecondPhaseActive ? secondPhaseSprite : firstPhaseSprite;
+            ArrowAttack();
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            BombAttack();
+        }
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            Dash();
         }
     }
 
     void SwordAttack()
     {
         animator.SetTrigger("Attack");
-        if (swordSound != null) audioSource.PlayOneShot(swordSound);
+        if (swordSound != null && audioSource != null) audioSource.PlayOneShot(swordSound);
         if (attackParticles != null) attackParticles.Play();
         float radius = isSecondPhaseActive ? 3f : 2f;
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(transform.position, radius);
+        GameManager gm = FindObjectOfType<GameManager>();
         foreach (Collider2D enemy in hitEnemies)
         {
-            if (enemy.CompareTag("Enemy")) enemy.GetComponent<EnemyController>().TakeDamage(meleeDamage);
+            if (enemy.CompareTag("Enemy"))
+            {
+                EnemyController ec = enemy.GetComponent<EnemyController>();
+                if (ec != null)
+                {
+                    ec.TakeDamage(meleeDamage);
+                    gm?.AddDamageToEnemies(meleeDamage);
+                }
+            }
         }
         Debug.Log("Удар мечом!");
     }
 
-void ChokeAttack()
+    void ChokeAttack()
     {
         animator.SetTrigger("Attack");
-        if (chokeSound != null) audioSource.PlayOneShot(chokeSound);
+        if (chokeSound != null && audioSource != null) audioSource.PlayOneShot(chokeSound);
         if (attackParticles != null) attackParticles.Play();
         float radius = isSecondPhaseActive ? 2f : 1.5f;
         Collider2D closestEnemy = Physics2D.OverlapCircle(transform.position, radius, LayerMask.GetMask("Enemy"));
-        if (closestEnemy != null) closestEnemy.GetComponent<EnemyController>().TakeDamage(chokeDamage);
+        GameManager gm = FindObjectOfType<GameManager>();
+        if (closestEnemy != null)
+        {
+            EnemyController ec = closestEnemy.GetComponent<EnemyController>();
+            if (ec != null)
+            {
+                ec.TakeDamage(chokeDamage);
+                gm?.AddDamageToEnemies(chokeDamage);
+            }
+        }
         Debug.Log("Удушье!");
     }
 
     void ArrowAttack()
     {
         animator.SetTrigger("Arrow");
-        if (arrowSound != null) audioSource.PlayOneShot(arrowSound);
+        if (arrowSound != null && audioSource != null) audioSource.PlayOneShot(arrowSound);
         if (arrowParticles != null) arrowParticles.Play();
-        GameObject arrow = Instantiate(arrowPrefab, transform.position, Quaternion.identity);
-        arrow.GetComponent<Arrow>().damage = arrowDamage;
-        if (isSecondPhaseActive) arrow.GetComponent<Arrow>().speed += 5f;
+        if (arrowPrefab != null)
+        {
+            GameObject arrow = Instantiate(arrowPrefab, transform.position, Quaternion.identity);
+            Arrow arrowScript = arrow.GetComponent<Arrow>();
+            if (arrowScript != null)
+            {
+                arrowScript.damage = arrowDamage;
+                if (isSecondPhaseActive) arrowScript.speed += 5f;
+            }
+        }
         Debug.Log("Выстрел стрелой!");
     }
 
     void BombAttack()
     {
         animator.SetTrigger("Bomb");
-        if (bombSound != null) audioSource.PlayOneShot(bombSound);
+        if (bombSound != null && audioSource != null) audioSource.PlayOneShot(bombSound);
         if (bombParticles != null) bombParticles.Play();
-        GameObject bomb = Instantiate(bombPrefab, transform.position + transform.up * 2f, Quaternion.identity);
-        bomb.GetComponent<Bomb>().damage = bombDamage;
-        if (isSecondPhaseActive) bomb.GetComponent<Bomb>().explosionRadius += 1f;
+        if (bombPrefab != null)
+        {
+            GameObject bomb = Instantiate(bombPrefab, transform.position + transform.up * 2f, Quaternion.identity);
+            Bomb bombScript = bomb.GetComponent<Bomb>();
+            if (bombScript != null)
+            {
+                bombScript.damage = bombDamage;
+                if (isSecondPhaseActive) bombScript.explosionRadius += 1f;
+            }
+        }
         Debug.Log("Бросок бомбы!");
     }
 
-    void Dash(Vector2 direction)
+    void Dash()
     {
-        if (direction.magnitude > 0)
-        {
-            animator.SetTrigger("Dash");
-            rb.MovePosition(rb.position + direction * dashDistance);
-            nextDashTime = Time.time + dashCooldown;
-            dashFeedbackTime = 0.3f;
-            if (dashSound != null && audioSource != null) audioSource.PlayOneShot(dashSound);
-            if (dashParticles != null) dashParticles.Play();
-            Debug.Log("Босс сделал рывок!");
-        }
+        animator.SetTrigger("Dash");
+        if (dashSound != null && audioSource != null) audioSource.PlayOneShot(dashSound);
+        rb.velocity = new Vector2(rb.velocity.x * 2f, rb.velocity.y);
+        Debug.Log("Рывок!");
     }
 
     public void TakeDamage(float damage)
     {
-        if (invulnerabilityTime > 0) return;
-
-        if (activeShield > 0)
+        if (shieldAmount > 0)
         {
-            activeShield -= damage;
-            if (activeShield < 0) activeShield = 0;
-            return;
-        }
-        health -= damage;
-        if (health <= 0)
-        {
-            if (hasSecondPhase && hasSecondLife)
+            shieldAmount -= damage;
+            if (shieldAmount < 0)
             {
-                ActivateSecondPhase();
-                GameManager gm = FindObjectOfType<GameManager>();
-                if (gm != null) gm.BossPhaseChanged();
-            }
-            else
-            {
-                animator.SetTrigger("Death");
-                GameObject.FindGameObjectWithTag("GameManager").GetComponent<GameManager>().BossDied();
-                Destroy(gameObject, 0.5f);
+                health += shieldAmount;
+                shieldAmount = 0;
             }
         }
+        else
+        {
+            health -= damage;
+        }
+        spriteRenderer.color = Color.red;
+        Invoke("ResetColor", 0.1f);
     }
 
-    public void UpgradeWeapon(string weapon, float boost)
+    void ResetColor()
     {
-        if (weapon == "Sword") meleeDamage += boost;
-        else if (weapon == "Choke") chokeDamage += boost;
-        else if (weapon == "Arrow") arrowDamage += boost;
-        else if (weapon == "Bomb") bombDamage += boost;
-        Debug.Log($"{weapon} улучшен! Новый урон: {meleeDamage}/{chokeDamage}/{arrowDamage}/{bombDamage}");
+        spriteRenderer.color = Color.white;
     }
 
-    public void IncreaseHealth(float amount)
+    void ActivateSecondPhase()
     {
-        health += amount;
-        Debug.Log($"Здоровье босса увеличено на {amount}. Текущее здоровье: {health}");
+        isSecondPhaseActive = true;
+        health = 160f;
+        speed += 2f;
+        spriteRenderer.sprite = secondPhaseSprite;
+        animator.SetTrigger("PhaseChange");
+        FindObjectOfType<GameManager>()?.BossPhaseChanged();
+        Debug.Log("Босс перешёл во вторую фазу!");
     }
 
-    public void ActivateShield(float amount)
+    public void RestoreSecondPhase()
     {
-        activeShield = amount;
-        Debug.Log($"Щит активирован на {amount}!");
+        health = 160f;
+        isSecondPhaseActive = true;
+        spriteRenderer.sprite = secondPhaseSprite;
     }
 
-    public void PurchaseSecondPhase()
+    public bool IsInSecondPhase()
     {
-        hasSecondPhase = true;
-        hasSecondLife = true;
-        Debug.Log("Вторая фаза куплена! Теперь доступна для каждой волны.");
+        return isSecondPhaseActive;
     }
 
     public bool HasSecondPhasePurchased()
@@ -223,48 +247,39 @@ void ChokeAttack()
         return hasSecondPhase;
     }
 
-    public void RestoreSecondPhase()
+    public void UpgradeWeapon(string weapon, float amount)
     {
-        if (hasSecondPhase)
+        if (weapon == "Sword") meleeDamage += amount;
+        else if (weapon == "Arrow") arrowDamage += amount;
+        Debug.Log($"{weapon} улучшен до {amount} урона!");
+    }
+
+    public void IncreaseHealth(float amount)
+    {
+        health += amount;
+        Debug.Log($"Здоровье босса увеличено на {amount}!");
+    }
+
+    public void ActivateShield(float amount)
+    {
+        shieldAmount = amount;
+        Debug.Log($"Щит активирован на {amount}!");
+    }
+
+    public void PurchaseSecondPhase()
         {
-            hasSecondLife = true;
-            isSecondPhaseActive = false;
-            Debug.Log("Вторая фаза восстановлена для следующей волны!");
+            hasSecondPhase = true;
+            Debug.Log("Вторая фаза куплена!");
         }
-    }
 
-void ActivateSecondPhase()
-    {
-        animator.SetTrigger("PhaseChange");
-        if (phaseChangeSound != null) audioSource.PlayOneShot(phaseChangeSound);
-        isSecondPhaseActive = true;
-        hasSecondLife = false;
-        health = 160f;
-        meleeDamage *= 1.4f;
-        chokeDamage *= 1.4f;
-        arrowDamage *= 1.4f;
-        bombDamage *= 1.4f;
-        moveSpeed += 2f;
-        invulnerabilityTime = 3f;
-        Debug.Log("Босс перешёл во вторую фазу! Урон, скорость и радиус атак увеличены, временная неуязвимость!");
-    }
-
-    public void SlowDown(float reduction, float duration)
-    {
-        if (!isSecondPhaseActive)
+        public void SlowDown(float amount, float duration)
         {
-            moveSpeed -= reduction;
+            speed -= amount;
             Invoke("ResetSpeed", duration);
         }
-    }
 
-    void ResetSpeed()
-    {
-        moveSpeed = isSecondPhaseActive ? 7f : 5f;
-    }
-
-    public bool IsInSecondPhase()
-    {
-        return isSecondPhaseActive;
-    }
+        void ResetSpeed()
+        {
+            speed = isSecondPhaseActive ? 7f : 5f;
+        }
 }
