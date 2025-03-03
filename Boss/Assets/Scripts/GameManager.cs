@@ -44,8 +44,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone" };
-        string[] suffixes = { "X", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf" };
+        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone", "Clown", "Nagibator", "TrakTor", "Syn_v_", "genius", "krol", "lork", "ne_" };
+        string[] suffixes = { "X", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf", "XYZ", "3000", "Parovoz", "Demon", "Chai", "100%", "1000-7", "fire", "erif", "moloko" };
         List<string> usedNicknames = new List<string>();
 
         foreach (string className in new[] { "Berserker", "Sniper", "Pyromancer", "Cleric", "Guardian", "Bard" })
@@ -117,7 +117,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void StartNewWave()
+    public void StartNewWave()
     {
         GameObject spawner = Instantiate(enemySpawnerPrefab, Vector3.zero, Quaternion.identity);
         EnemySpawner enemySpawner = spawner.GetComponent<EnemySpawner>();
@@ -178,6 +178,16 @@ public class GameManager : MonoBehaviour
             lastBossHitTime = hitTime;
         }
         EndGame(false);
+    }
+    public void BossPhaseChanged()
+    {
+        globalFatigue = Mathf.Max(0, globalFatigue - 10f);
+        Debug.Log("Первая фаза босса убита! Усталость снижена на 10%. Текущая усталость: " + globalFatigue);
+        if (bossPhaseMusic != null && musicSource != null)
+        {
+            musicSource.clip = bossPhaseMusic;
+            musicSource.Play();
+        }
     }
 
     void EndGame(bool bossWon)

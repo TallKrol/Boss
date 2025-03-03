@@ -3,7 +3,7 @@ using UnityEngine;
 public class Arrow : MonoBehaviour
 {
     public float speed = 8f;
-    public float damage;
+    public float damage = 15f;
 
     void Update()
     {
@@ -15,6 +15,12 @@ public class Arrow : MonoBehaviour
         if (other.CompareTag("Enemy"))
         {
             other.GetComponent<EnemyController>().TakeDamage(damage);
+            Destroy(gameObject);
+        }
+
+        if (other.CompareTag("Boss"))
+        {
+            other.GetComponent<BossController>().TakeDamage(damage);
             Destroy(gameObject);
         }
     }

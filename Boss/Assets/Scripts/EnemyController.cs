@@ -13,7 +13,7 @@ public class EnemyController : MonoBehaviour
     private bool isGrounded = true;
 
     public GameObject projectilePrefab;
-    private float attackCooldown = 2f;
+    public float attackCooldown = 2f;
     private float nextAttackTime = 0f;
 
     public LayerMask groundLayer;
@@ -29,8 +29,8 @@ public class EnemyController : MonoBehaviour
     private bool isIdling = false;
     private bool recentlyAttacked = false;
 
-    private float stumbleChance = 0.01f;
-    private float missChance = 0.15f;
+    private float stumbleChance = 0.001f;
+    private float missChance = 0.015f;
 
     private SpriteRenderer spriteRenderer;
     private Animator animator;
@@ -55,7 +55,7 @@ public class EnemyController : MonoBehaviour
     private float nextRandomChatTime = 0f;
 
     [SerializeField]
-    private bool friendlyFire = false;
+    private bool friendlyFire = true;
 
     public event Action<EnemyController> OnDeath;
 
@@ -1421,7 +1421,7 @@ Debug.Log($"{playerNickname} [{enemyClass}] уворачивается, чтобы окружить босса!
                         $"{playerNickname} [{enemyClass}]: Моя песня — твой кошмар!",
                         $"{playerNickname} [{enemyClass}]: Ща зажгу под бит!",
                         $"{playerNickname} [{enemyClass}]: Музыка — мой кореш!",
-                        $"{playerNickname} [{enemyClass}]: Под мою мелодию пляши!",
+                        $"{playerNickname} [{enemyClass}]: Под мою мелодию мёртвые воскресали!",
                         $"{playerNickname} [{enemyClass}]: Босс, тебе ноты в рыло!",
                         $"{playerNickname} [{enemyClass}]: Играю, и мы победим!",
                         $"{playerNickname} [{enemyClass}]: #####, под мою музыку!",
