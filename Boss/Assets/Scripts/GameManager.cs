@@ -44,8 +44,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone", "Clown", "Nagibator", "TrakTor", "Syn_v_", "genius", "krol", "lork", "ne_", "Daniil", "Kill", "Sliver", "BoRobuSHeK", "DeD", "Divanchik", "Zeus" };
-        string[] suffixes = { "X", "Y", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf", "XYZ", "3000", "Parovoz", "Demon", "Chai", "100%", "1000-7", "fire", "erif", "moloko", "2017", "Zadrot", "FoX", "Kr0lik", "NaDivane", "Pirozhok", "Knch" };
+        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone", "Clown", "Nagibator", "TrakTor", "Syn_v_", "genius", "krol", "lork", "ne_", "Daniil", "Kill", "Sliver", "BoRobuSHeK", "DeD", "Divanchik", "Zeus", "ProDaMGaRaZH", "IzYUM" };
+        string[] suffixes = { "X", "Y", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf", "XYZ", "3000", "Parovoz", "Demon", "Chai", "100%", "1000-7", "fire", "erif", "moloko", "2017", "Zadrot", "FoX", "Kr0lik", "NaDivane", "Pirozhok", "Knch", "42" };
         List<string> usedNicknames = new List<string>();
 
         foreach (string className in new[] { "Berserker", "Sniper", "Pyromancer", "Cleric", "Guardian", "Bard" })
@@ -107,8 +107,8 @@ public class GameManager : MonoBehaviour
     void UpdateUI()
     {
         if (fatigueSlider != null) fatigueSlider.value = globalFatigue / 100f;
-        if (waveText != null) waveText.text = $"Волна {currentWave}";
-        if (upgradePointsText != null) upgradePointsText.text = $"Очки: {upgradePoints}";
+        if (waveText != null) waveText.text = $"Г‚Г®Г«Г­Г  {currentWave}";
+        if (upgradePointsText != null) upgradePointsText.text = $"ГЋГ·ГЄГЁ: {upgradePoints}";
         BossController boss = FindObjectOfType<BossController>();
         if (bossHealthSlider != null && boss != null)
         {
@@ -136,7 +136,7 @@ public class GameManager : MonoBehaviour
         {
             boss.RestoreSecondPhase();
         }
-        Debug.Log($"Началась волна {currentWave}");
+        Debug.Log($"ГЌГ Г·Г Г«Г Г±Гј ГўГ®Г«Г­Г  {currentWave}");
     }
 
     void EndWave()
@@ -147,10 +147,10 @@ public class GameManager : MonoBehaviour
         if (enemiesKilled >= 6)
         {
             upgradePoints += 5;
-            Debug.Log("Бонус +5 очков за убийство всей пати!");
+            Debug.Log("ГЃГ®Г­ГіГ± +5 Г®Г·ГЄГ®Гў Г§Г  ГіГЎГЁГ©Г±ГІГўГ® ГўГ±ГҐГ© ГЇГ ГІГЁ!");
         }
         enemiesKilled = 0;
-        Debug.Log($"Волна {currentWave} провалилась. Усталость: {globalFatigue}%. Очки прокачки: {upgradePoints}");
+        Debug.Log($"Г‚Г®Г«Г­Г  {currentWave} ГЇГ°Г®ГўГ Г«ГЁГ«Г Г±Гј. Г“Г±ГІГ Г«Г®Г±ГІГј: {globalFatigue}%. ГЋГ·ГЄГЁ ГЇГ°Г®ГЄГ Г·ГЄГЁ: {upgradePoints}");
         isUpgradePhase = true;
     }
 
@@ -174,7 +174,7 @@ public class GameManager : MonoBehaviour
     {
         if (hitTime > lastBossHitTime)
         {
-            bossKiller = killer; // Теперь "Ник [Класс]"
+            bossKiller = killer; // Г’ГҐГЇГҐГ°Гј "ГЌГЁГЄ [ГЉГ«Г Г±Г±]"
             lastBossHitTime = hitTime;
         }
         EndGame(false);
@@ -182,7 +182,7 @@ public class GameManager : MonoBehaviour
     public void BossPhaseChanged()
     {
         globalFatigue = Mathf.Max(0, globalFatigue - 10f);
-        Debug.Log("Первая фаза босса убита! Усталость снижена на 10%. Текущая усталость: " + globalFatigue);
+        Debug.Log("ГЏГҐГ°ГўГ Гї ГґГ Г§Г  ГЎГ®Г±Г±Г  ГіГЎГЁГІГ ! Г“Г±ГІГ Г«Г®Г±ГІГј Г±Г­ГЁГ¦ГҐГ­Г  Г­Г  10%. Г’ГҐГЄГіГ№Г Гї ГіГ±ГІГ Г«Г®Г±ГІГј: " + globalFatigue);
         if (bossPhaseMusic != null && musicSource != null)
         {
             musicSource.clip = bossPhaseMusic;
@@ -199,25 +199,25 @@ public class GameManager : MonoBehaviour
 
         if (bossWon)
         {
-            Debug.Log("Босс победил — усталость игроков достигла 100%!");
+            Debug.Log("ГЃГ®Г±Г± ГЇГ®ГЎГҐГ¤ГЁГ« вЂ” ГіГ±ГІГ Г«Г®Г±ГІГј ГЁГЈГ°Г®ГЄГ®Гў Г¤Г®Г±ГІГЁГЈГ«Г  100%!");
             victoryPanel.SetActive(true);
             statsPanel.SetActive(true);
-            statsText.text = $"Победа Босса!\n" +
-                             $"Нанесённый урон врагам: {totalDamageToEnemies:F1}\n" +
-                             $"Куплено улучшений: {upgradesPurchased}\n" +
-                             $"Пережито волн: {currentWave}";
+            statsText.text = $"ГЏГ®ГЎГҐГ¤Г  ГЃГ®Г±Г±Г !\n" +
+                             $"ГЌГ Г­ГҐГ±ВёГ­Г­Г»Г© ГіГ°Г®Г­ ГўГ°Г ГЈГ Г¬: {totalDamageToEnemies:F1}\n" +
+                             $"ГЉГіГЇГ«ГҐГ­Г® ГіГ«ГіГ·ГёГҐГ­ГЁГ©: {upgradesPurchased}\n" +
+                             $"ГЏГҐГ°ГҐГ¦ГЁГІГ® ГўГ®Г«Г­: {currentWave}";
         }
         else
         {
-            Debug.Log("Игроки победили — босс мёртв!");
+            Debug.Log("Г€ГЈГ°Г®ГЄГЁ ГЇГ®ГЎГҐГ¤ГЁГ«ГЁ вЂ” ГЎГ®Г±Г± Г¬ВёГ°ГІГў!");
             defeatPanel.SetActive(true);
             statsPanel.SetActive(true);
             var topDPS = damageByClass.OrderByDescending(x => x.Value).First();
-            statsText.text = $"Победа Игроков!\n" +
-                             $"Больше всего урона: {topDPS.Key} ({topDPS.Value:F1})\n" +
-                             $"Лечение Клерка: {totalClericHealing:F1}\n" +
-                             $"Убийца босса: {bossKiller}\n" +
-                             $"Общее количество атак: {activeEnemies.Sum(e => e.attackCooldown > 0 ? 1 : 0)}";
+            statsText.text = $"ГЏГ®ГЎГҐГ¤Г  Г€ГЈГ°Г®ГЄГ®Гў!\n" +
+                             $"ГЃГ®Г«ГјГёГҐ ГўГ±ГҐГЈГ® ГіГ°Г®Г­Г : {topDPS.Key} ({topDPS.Value:F1})\n" +
+                             $"Г‹ГҐГ·ГҐГ­ГЁГҐ ГЉГ«ГҐГ°ГЄГ : {totalClericHealing:F1}\n" +
+                             $"Г“ГЎГЁГ©Г¶Г  ГЎГ®Г±Г±Г : {bossKiller}\n" +
+                             $"ГЋГЎГ№ГҐГҐ ГЄГ®Г«ГЁГ·ГҐГ±ГІГўГ® Г ГІГ ГЄ: {activeEnemies.Sum(e => e.attackCooldown > 0 ? 1 : 0)}";
         }
         if (musicSource != null) musicSource.Stop();
     }
@@ -230,7 +230,7 @@ public class GameManager : MonoBehaviour
     public void QuitGame()
     {
         Application.Quit();
-        Debug.Log("Игра закрыта!");
+        Debug.Log("Г€ГЈГ°Г  Г§Г ГЄГ°Г»ГІГ !");
     }
 
     public void UpgradeSword()
@@ -309,8 +309,8 @@ public class GameManager : MonoBehaviour
         totalClericHealing += healing;
     }
 
-    public void BossDied() // Устаревший метод
+    public void BossDied() // Г“Г±ГІГ Г°ГҐГўГёГЁГ© Г¬ГҐГІГ®Г¤
     {
-        BossDied("Неизвестно", Time.time);
+        BossDied("ГЌГҐГЁГ§ГўГҐГ±ГІГ­Г®", Time.time);
     }
 }
