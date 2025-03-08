@@ -44,8 +44,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone", "Clown", "Nagibator", "TrakTor", "Syn_v_", "genius", "krol", "lork", "ne_", "Daniil", "Kill", "Sliver", "BoRobuSHeK", "DeD", "Divanchik", "Zeus" };
-        string[] suffixes = { "X", "Y", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf", "XYZ", "3000", "Parovoz", "Demon", "Chai", "100%", "1000-7", "fire", "erif", "moloko", "2017", "Zadrot", "FoX", "Kr0lik", "NaDivane", "Pirozhok", "Knch" };
+        string[] prefixes = { "Dark", "Light", "Swift", "Rage", "Cool", "Pro", "Silent", "Lone", "Clown", "Nagibator", "TrakTor", "Syn_v_", "genius", "krol", "lork", "ne_", "Daniil", "Kill", "Sliver", "BoRobuSHeK", "DeD", "Divanchik", "Zeus", "ProDaMGaRaZH", "IzYUM" };
+        string[] suffixes = { "X", "Y", "Z", "123", "007", "Blade", "Fire", "Storm", "Wolf", "XYZ", "3000", "Parovoz", "Demon", "Chai", "100%", "1000-7", "fire", "erif", "moloko", "2017", "Zadrot", "FoX", "Kr0lik", "NaDivane", "Pirozhok", "Knch", "42" };
         List<string> usedNicknames = new List<string>();
 
         foreach (string className in new[] { "Berserker", "Sniper", "Pyromancer", "Cleric", "Guardian", "Bard" })
